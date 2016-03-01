@@ -1,0 +1,73 @@
+=What is osclients?
+
+Osclients is a FLOSS Python library to instantiate OpenStack clients. It uses the available Python APIs (python-openstacknova, python-openstack...)
+
+All the clients are created from the same session. Authentication is managed transparently using environment variables or programmatically via set_credential or set_token methods.
+
+Osclients was created as part of project FIWARE, but may be used with any project.
+
+=What clients are supported?
+
+Currently the following clients are supported:
+*keystone v2 and v3
+*nova
+*glance
+*cinder v1 and v2
+*neutron
+*swift
+
+Any other client may be added easily. It is also very easy to communicate via the REST API to any server using osclients. With osclients the token is obtained automatically and making a request is very simple.
+
+=What is the advantage of using osclients instead of directly the Python APIs?
+
+Do not get wrong: the software that uses osclients is still calling the official Python APIs directly. The difference is that osclients does all the work about getting the client and also provide some extra features, but at the point the specific client (nova, glance, etc.) has been gotten, the code is the same whether it is using osclients or not. Osclients does not work as a wrapper, but as a factory with some extra additions.
+
+Using osclients the programmers save time getting the clients to work, and the code is more compact. A fair amount of imports and initialization code is avoided.
+
+You may explore the osclients code to check by yourself that using the library won't do your code less flexible; even if you do not use the library, you will save time learning the best way to creating clients using a session.
+
+=Why not using python-openstackclient?
+
+This is a great tool to unify the different command line clients, but probably is not enough mature to be used as a library. This python module uses the different python API modules and wrap them, but not all the features are exposed and the interface may change.
+
+=Why not using the REST API directly?
+
+Using the REST API is an attractive idea because it is well documented and never changes, but the caveat is that it requires more work, the code is larger and more difficult to read than using a Python library. Programmers who use the REST API extensively, probably will move all the REST client code to a module at the end. In this case, the code that invokes the module needs a unit test similar to the code that calls a library, but in addition the module code has also to be tested. This is a typical situation where a reusable library is a good idea.
+
+Anyway, you can use the REST API using osclients to get a session. It is better to use a session than getting a token by yourself, because otherwise you will have to manage some extra complexity to avoid getting a ticket for each request but also to manage that the token is not valid for ever.
+
+=Why should use the API in my scripts and not the command tools?
+
+Independently of using the API or the command line, a specific version of the python modules must be installed, because the command line tools syntax and output changes frequently. At the point as installing software and using virtualenv is required even when using shell scripts, the possible advantages of using a shell script fade out. Anyway, it is possible to call easily to osclients from a shell script.
+
+Some examples:
+
+  # Getting a token
+  utils/osclients.py 'o.get_token()'
+
+  # Printing the project-id (aka tenant id) of the user:
+  utils/osclients.py 'o.project_id'
+
+  # Getting a floating point of VM 'myvm' (but be aware that an error is emitted if there is another VM with the same name, a shell script probably
+  # wont detect the problem and will use the first VM, that is, the equivalent to o.nova.find_all(name='myvm')[0].id)
+  utils/osclients.py "o.nova.floating_ips.find(instance_id=o.nova.servers.find(name='myvm').id).ip"
+
+Using a nova, glance, swift
+
+=Does osclients depends of all OpenStack modules it supports? What about if I only need a client?
+
+Osclients calls import dynamically. This way, only the modules that will be called are required.
+
+Osclients may be initialled specifying the list of modules it will import. This is for software that prefers a more declarative requirements model. But the default model, used by default by the osclients pre-allocated object, is loading the module the first time a client of that type (nova, swift, etc. is invoked). The only module that is always imported is keystone, because it is required to get a credential, discover the services and instantiate the other clients.
+
+=Why a client object called osclients and aliased as 'o' is pre-allocated? I prefer instantiate it by myself.
+
+Of course, programmers can allocate a new object with a chosen parameters set in the constructor when they want. The pre-allocated object is for users that only need a ready to use object that reads the credential for the environment variables. It is specially useful in scripts; this is the 'o' object in the examples. The object may be ignored securely if not used, because no connection to any server is done until a method that implies getting a session is called.
+
+=What other features has osclients?
+
+Oscliens has some extra methods to get catalog information from the credential and specifically, a method to internally override an endpoint (i.e. to ignore the endpoint provided by the keystone server and use a different URL). This method, override_endpoint, is specially useful with the admin endpoints, which potentially could be accessible via both a private and public IP, but only one of them may be registered on the keystone server. Indeed, the method is called on the pre-allocated object osclients, if environment variable KEYSTONE_ADMIN_ENDPOINT is defined, because some organizations registered a private IP for the admin keystone end-point, but the service is also available using an alternative IP.
+
+Another extra functionality is provided by the pair of methods preserve_session/restore_session. These methods may be useful for example when a program is using an administrator credential but temporally wants to do an operation with an user account. This way is possible to save and restore the session without requiring a new authentication.
+
+

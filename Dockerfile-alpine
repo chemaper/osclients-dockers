@@ -1,0 +1,12 @@
+# install osclients & openstackmap
+
+FROM alpine
+MAINTAINER chema@softlibre.net
+
+WORKDIR /root
+RUN apk update ; apk add python python-dev linux-headers py-pip py-setuptools gcc git musl-dev libffi-dev libffi openssl openssl-dev ; git clone https://github.com/telefonicaid/fiware-skuld.git ; pip install bpython ndg-httpsclient ; pip install -r fiware-skuld/requirements.txt --allow-all-external ; install -d code/utils ; mv fiware-skuld/utils/osclients.py code/utils ; mv fiware-skuld/skuld/openstackmap.py code ; rm -rf fiware-skuld ; touch code/utils/__init__.py ; apk del gcc git python-dev py-pip linux-headers musl-dev libffi-dev openssl-dev
+COPY launcher launcher
+COPY launcher_cmd launcher_cmd
+COPY osclients_faq.txt osclients_faq.txt
+ENTRYPOINT ["/root/launcher"]
+CMD []

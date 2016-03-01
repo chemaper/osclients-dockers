@@ -1,0 +1,11 @@
+#!/bin/sh
+export PYTHONPATH=~/code
+cat <<EOF >imports
+from utils.osclients import osclients as o
+from openstackmap import OpenStackMap as m
+EOF
+if [ $# -eq 0 ] ; then
+bpython -i imports
+else
+./launcher_cmd "$1"
+fi
