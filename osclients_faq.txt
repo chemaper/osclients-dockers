@@ -4,7 +4,7 @@ Osclients is a FLOSS Python library to instantiate OpenStack clients. It uses th
 
 All the clients are created from the same session. Authentication is managed transparently using environment variables or programmatically via set_credential or set_token methods.
 
-Osclients was created as part of project FIWARE, but may be used with any project.
+Osclients was created as part of project FIWARE, but may be used with any other project.
 
 =What clients are supported?
 
@@ -30,11 +30,24 @@ You may explore the osclients code to check by yourself that using the library w
 
 This is a great tool to unify the different command line clients, but probably is not enough mature to be used as a library. This python module uses the different python API modules and wrap them, but not all the features are exposed and the interface may change.
 
+When using a bridged, non-official API is OK, probably a better option is https://pypi.python.org/pypi/shade
+
 =Why not using the REST API directly?
 
 Using the REST API is an attractive idea because it is well documented and never changes, but the caveat is that it requires more work, the code is larger and more difficult to read than using a Python library. Programmers who use the REST API extensively, probably will move all the REST client code to a module at the end. In this case, the code that invokes the module needs a unit test similar to the code that calls a library, but in addition the module code has also to be tested. This is a typical situation where a reusable library is a good idea.
 
 Anyway, you can use the REST API using osclients to get a session. It is better to use a session than getting a token by yourself, because otherwise you will have to manage some extra complexity to avoid getting a ticket for each request but also to manage that the token is not valid for ever.
+
+This is an example that shows how easy is to use the REST API, because all the work credential work is done automatically.
+
+ from utils.osclients import osclients
+
+ ef = {'service_type': 'identity', 'interface': 'public'}
+ url_base = osclients.get_public_endpoint('identity')
+ resp = osclients.session.get(url_base + '/OS-EP-FILTER/endpoint_groups',
+                                      endpoint_filter=ef)
+ filters = resp.json()['endpoint_groups']
+
 
 =Why should use the API in my scripts and not the command tools?
 
@@ -70,4 +83,44 @@ Oscliens has some extra methods to get catalog information from the credential a
 
 Another extra functionality is provided by the pair of methods preserve_session/restore_session. These methods may be useful for example when a program is using an administrator credential but temporally wants to do an operation with an user account. This way is possible to save and restore the session without requiring a new authentication.
 
+=Why using osclients when os-client-config is available?
+
+Os-client-config is a great package with quite interesting features. Is true that it may be use as a factory o 'legacy clients', however, osclients has its
+own features (see the previous point) and it uses sessions whose implies reusing tokens. Compare this code:
+
+os-client-config:
+
+ >>>import os_clients_config as o
+ >>>o.make_client('compute').client.get_token()
+ u'58e7cb6be5514fd589dda9a2946133d1'
+ >>>o.make_client('image').http_client.get_token()
+ u'07bb7e44479a4cd1b1bfe69208d4d2fd'
+ >>>o.session_client('images').get_token()
+ u'2206af5bf06343c1a8fb4e05b24aa5a4'
+ >>>o.session_client('compute').get_token()
+ u'1a21e3ba0fc9402390d1df1c72fdb944'
+ >>>o.session_client('compute').get_token()
+ u'5e84c9ed2a874d82ae0958074084aa69'
+ 
+osclients: 
+
+  >>>from utils.osclients import osclients as o
+  >>>o.get_token()
+  '656095fd00434da0b2ff57ede834a2f6'
+  >>>o.session.get_token()
+  '656095fd00434da0b2ff57ede834a2f6'
+  >>> o.glance.http_client.auth_token
+  '656095fd00434da0b2ff57ede834a2f6'
+  >>> o.nova.client.get_token()
+  '656095fd00434da0b2ff57ede834a2f6'
+  >>> o.get_novaclient().client.get_token()
+  '656095fd00434da0b2ff57ede834a2f6'
+  >>>o.session.invalidate()
+  True
+  >>> o.get_novaclient().client.get_token()
+  '2b5b83fc9c054f7bb066f91167c0ac19'
+  >>> o.session.get_token()
+  '2b5b83fc9c054f7bb066f91167c0ac19'
+
+This works, because 'o' is an object an inside each object, there is a session object that is shared between all the methods. Another object may be created with a different configuration and it will have its own session.
 
